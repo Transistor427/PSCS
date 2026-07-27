@@ -232,7 +232,7 @@ class SurfaceControl:
 
     def cmd_SURFACE_CTRL_DISABLE(self, gcmd):
         if not self.enabled:
-            gcmd.respond_info("Контроль поверхности печати уже отключён")
+            gcmd.respond_info("Контроль поверхности печати отключён")
             return
         self.enabled = False
         self._update_timer()
