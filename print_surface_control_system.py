@@ -137,6 +137,9 @@ class SurfaceControl:
         return bool(self.query_endstop(print_time))
 
     def _is_printing(self, eventtime):
+        print_stats = self.printer.lookup_object('print_stats', None)
+        if print_stats is not None:
+            return print_stats.get_status(eventtime)['state'] == 'printing'
         idle_timeout = self.printer.lookup_object('idle_timeout')
         return idle_timeout.get_status(eventtime)['state'] == 'Printing'
 
@@ -185,17 +188,20 @@ class SurfaceControl:
 
     def _execute_trigger(self, eventtime):
         try:
-            prefix = ""
+            # Important: do not call pause_resume.send_pause_command() before
+            # PAUSE. That immediately sets print_stats to "paused", and custom
+            # PAUSE macros (which check state == "printing") abort with
+            # "Печать не запущена". PAUSE / PAUSE_BASE will pause the SD job.
+            script_parts = []
             if self.pause_on_trigger:
-                pause_resume = self.printer.lookup_object('pause_resume')
-                pause_resume.send_pause_command()
-                prefix = "PAUSE\n"
+                script_parts.append("PAUSE")
             self.gcode.respond_info(self.pause_message)
-            script = prefix
             if self.trigger_gcode is not None:
-                script += self.trigger_gcode.render()
-            if script:
-                self.gcode.run_script(script + "\nM400")
+                rendered = self.trigger_gcode.render().strip()
+                if rendered:
+                    script_parts.append(rendered)
+            if script_parts:
+                self.gcode.run_script("\n".join(script_parts) + "\nM400")
         except Exception:
             logging.exception("SurfaceControl: error while handling trigger")
         finally:
@@ -232,7 +238,7 @@ class SurfaceControl:
 
     def cmd_SURFACE_CTRL_DISABLE(self, gcmd):
         if not self.enabled:
-            gcmd.respond_info("Контроль поверхности печати отключён")
+            gcmd.respond_info("Контроль поверхности печати уже отключён")
             return
         self.enabled = False
         self._update_timer()
