@@ -5,39 +5,27 @@
 ## Установка в одну строку
 
 ```bash
-cd ~ && git clone -b v2 https://github.com/Transistor427/PSCS.git && ln -sf ~/PSCS/print_surface_control_system.py ~/klipper/klippy/extras/print_surface_control_system.py
+cd ~ && git clone -b v2 https://github.com/Transistor427/PSCS.git && ln -sf ~/PSCS/print_surface_control_system.py ~/klipper/klippy/extras/print_surface_control_system.py && mkdir -p ~/printer_data/config/klipper-config && cp ~/PSCS/pscs.cfg ~/printer_data/config/klipper-config/pscs.cfg
 ```
 
 Затем добавьте в `printer.cfg` и сделайте `FIRMWARE_RESTART`:
 
 ```ini
-[print_surface_control_system]
+[include klipper-config/pscs.cfg]
 ```
 
-Нужны секции `[probe]` (или совместимый зонд) и `[pause_resume]`.
+Нужны секции `[probe]` (или совместимый зонд), `[pause_resume]` и `[save_variables]`.
+
 ## Команды
 
 | Команда | Описание |
 |---|---|
+| `CHANGE_PSCS` | Переключить контроль поверхности печати |
 | `SURFACE_CTRL_ENABLE` | Включить мониторинг |
 | `SURFACE_CTRL_DISABLE` | Выключить мониторинг |
 | `SURFACE_CTRL_STATUS` | Статус и состояние зонда |
 
-По умолчанию мониторинг выключен — включайте через `SURFACE_CTRL_ENABLE` (или `enable_on_startup: True`). Пауза срабатывает только когда принтер реально печатает (`idle_timeout` = Printing). Во время homing / bed mesh / `PROBE` срабатывания игнорируются.
-
-## Пример в макросах печати
-
-```ini
-[gcode_macro START_PRINT]
-gcode:
-    # ... прогрев, home, mesh ...
-    SURFACE_CTRL_ENABLE
-
-[gcode_macro END_PRINT]
-gcode:
-    SURFACE_CTRL_DISABLE
-    # ... остальное завершение ...
-```
+По умолчанию мониторинг выключен. После перезагрузки или аварийной остановки `delayed_gcode` в `pscs.cfg` снова отключает функцию и сбрасывает сохранённую переменную. Пауза срабатывает только когда принтер реально печатает (`idle_timeout` = Printing). Во время homing / bed mesh / `PROBE` срабатывания игнорируются.
 
 ## Опции конфигурации
 
@@ -59,12 +47,12 @@ recovery_time: 2.0
 pause_on_trigger: True
 
 # Сообщение в консоль / UI
-# pause_message: Surface control: probe triggered during print...
+# pause_message: Контроль поверхности печати: сработал зонд...
 
 # Дополнительный g-code при срабатывании (после PAUSE)
 # trigger_gcode:
-#     M117 Check bed adhesion!
-#     RESPOND TYPE=error MSG="PSCS: part likely detached"
+#     M117 Проверьте адгезию!
+#     RESPOND TYPE=error MSG="PSCS: вероятно отрыв детали"
 ```
 
 ## Статус в Moonraker / UI

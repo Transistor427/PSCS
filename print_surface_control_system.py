@@ -23,9 +23,8 @@ class SurfaceControl:
             'recovery_time', 2.0, minval=0.0, maxval=60.0)
         self.pause_on_trigger = config.getboolean('pause_on_trigger', True)
         default_msg = (
-            "Surface control: probe triggered during print. "
-            "Likely bed adhesion failure "
-            "(part detached or corner lifted). Pausing."
+            "Контроль поверхности печати: сработал зонд во время печати. "
+            "Вероятно, деталь отлипла или подорвало край. Пауза."
         )
         self.pause_message = config.get('pause_message', default_msg)
         if self.pause_on_trigger:
@@ -215,32 +214,32 @@ class SurfaceControl:
         }
 
     cmd_SURFACE_CTRL_ENABLE_help = (
-        "Enable print surface control (probe monitoring)")
+        "Включить контроль поверхности печати")
 
     def cmd_SURFACE_CTRL_ENABLE(self, gcmd):
         if self.enabled:
-            gcmd.respond_info("Surface control is already enabled")
+            gcmd.respond_info("Контроль поверхности печати уже включён")
             return
         self.enabled = True
         self._arm_recovery()
         self._update_timer()
         gcmd.respond_info(
-            "Surface control ENABLED - printer will pause if the probe "
-            "triggers during a print")
+            "Контроль поверхности печати включён — при срабатывании "
+            "зонда во время печати будет пауза")
         logging.info("SurfaceControl: enabled")
 
-    cmd_SURFACE_CTRL_DISABLE_help = "Disable print surface control"
+    cmd_SURFACE_CTRL_DISABLE_help = "Выключить контроль поверхности печати"
 
     def cmd_SURFACE_CTRL_DISABLE(self, gcmd):
         if not self.enabled:
-            gcmd.respond_info("Surface control is already disabled")
+            gcmd.respond_info("Контроль поверхности печати уже отключён")
             return
         self.enabled = False
         self._update_timer()
-        gcmd.respond_info("Surface control DISABLED")
+        gcmd.respond_info("Контроль поверхности печати отключён")
         logging.info("SurfaceControl: disabled")
 
-    cmd_SURFACE_CTRL_STATUS_help = "Report print surface control status"
+    cmd_SURFACE_CTRL_STATUS_help = "Статус контроля поверхности печати"
 
     def cmd_SURFACE_CTRL_STATUS(self, gcmd):
         eventtime = self.reactor.monotonic()
@@ -250,10 +249,10 @@ class SurfaceControl:
         except Exception:
             triggered = status['probe_triggered']
         gcmd.respond_info(
-            "Surface control: enabled=%s monitoring=%s probe=%s" % (
-                status['enabled'],
-                status['monitoring'],
-                "TRIGGERED" if triggered else "OPEN"))
+            "Контроль поверхности печати: включён=%s мониторинг=%s зонд=%s" % (
+                "да" if status['enabled'] else "нет",
+                "да" if status['monitoring'] else "нет",
+                "СРАБОТАЛ" if triggered else "ОТКРЫТ"))
 
 
 def load_config(config):
