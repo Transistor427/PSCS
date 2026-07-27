@@ -23,7 +23,7 @@ cd ~ && git clone -b v2 https://github.com/Transistor427/PSCS.git && ln -sf ~/PS
 | `SURFACE_CTRL_DISABLE` | Выключить мониторинг |
 | `SURFACE_CTRL_STATUS` | Статус и состояние зонда |
 
-По умолчанию мониторинг уже включён после старта Klipper (`enable_on_startup: True`). Пауза срабатывает только когда принтер реально печатает (`idle_timeout` = Printing). Во время homing / bed mesh / `PROBE` срабатывания игнорируются.
+По умолчанию мониторинг выключен — включайте через `SURFACE_CTRL_ENABLE` (или `enable_on_startup: True`). Пауза срабатывает только когда принтер реально печатает (`idle_timeout` = Printing). Во время homing / bed mesh / `PROBE` срабатывания игнорируются.
 
 ## Пример в макросах печати
 
@@ -43,8 +43,8 @@ gcode:
 
 ```ini
 [print_surface_control_system]
-# Включить мониторинг при старте Klipper (по умолчанию True)
-enable_on_startup: True
+# Включить мониторинг при старте Klipper (по умолчанию False)
+# enable_on_startup: True
 
 # Интервал опроса зонда, сек (по умолчанию 0.05)
 check_interval: 0.05

@@ -14,7 +14,7 @@ class SurfaceControl:
         self.reactor = self.printer.get_reactor()
         self.gcode = self.printer.lookup_object('gcode')
         # Config
-        self.enabled = config.getboolean('enable_on_startup', True)
+        self.enabled = config.getboolean('enable_on_startup', False)
         self.check_interval = config.getfloat(
             'check_interval', 0.05, minval=0.02, maxval=1.0)
         self.debounce_time = config.getfloat(
