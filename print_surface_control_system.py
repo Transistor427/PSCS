@@ -65,6 +65,7 @@ class SurfaceControl:
             "homing:homing_move_begin", self._homing_begin)
         self.printer.register_event_handler(
             "homing:homing_move_end", self._homing_end)
+        # Optional events (may be absent on some Klipper forks)
         self.printer.register_event_handler(
             "probe:multi_probe_begin", self._probe_begin)
         self.printer.register_event_handler(
@@ -96,7 +97,12 @@ class SurfaceControl:
         return None
 
     def _handle_ready(self):
-        self.suppress_until = self.reactor.monotonic() + self.recovery_time
+        # klippy:ready runs under assert_no_pause — must not query MCU here.
+        # Defer probe sync / timer start to a normal reactor callback.
+        self.reactor.register_callback(self._handle_ready_deferred)
+
+    def _handle_ready_deferred(self, eventtime):
+        self.suppress_until = eventtime + self.recovery_time
         self._sync_probe_state()
         self._update_timer()
         logging.info(
@@ -114,21 +120,24 @@ class SurfaceControl:
         self.in_homing_or_probe = max(0, self.in_homing_or_probe - 1)
         self._arm_recovery()
 
-    def _probe_begin(self):
+    def _probe_begin(self, *args):
         self.in_homing_or_probe += 1
 
-    def _probe_end(self):
+    def _probe_end(self, *args):
         self.in_homing_or_probe = max(0, self.in_homing_or_probe - 1)
         self._arm_recovery()
 
     def _arm_recovery(self):
         self.suppress_until = self.reactor.monotonic() + self.recovery_time
-        self._sync_probe_state()
+        # Do not query endstop here: homing handlers may run in contexts
+        # where reactor pause is restricted. Resync on next timer tick.
+        self.last_state = True
 
     def _sync_probe_state(self):
         try:
             self.last_state = self._is_probe_triggered()
         except Exception:
+            logging.exception("SurfaceControl: failed to read probe state")
             self.last_state = False
 
     def _is_probe_triggered(self):
@@ -168,7 +177,11 @@ class SurfaceControl:
             if (self.in_homing_or_probe
                     or eventtime < self.suppress_until
                     or self.pausing):
-                self._sync_probe_state()
+                # Keep last_state in sync without triggering
+                try:
+                    self.last_state = self._is_probe_triggered()
+                except Exception:
+                    pass
                 return eventtime + self.check_interval
             triggered = self._is_probe_triggered()
             if triggered and not self.last_state:
@@ -188,10 +201,8 @@ class SurfaceControl:
 
     def _execute_trigger(self, eventtime):
         try:
-            # Important: do not call pause_resume.send_pause_command() before
-            # PAUSE. That immediately sets print_stats to "paused", and custom
-            # PAUSE macros (which check state == "printing") abort with
-            # "Печать не запущена". PAUSE / PAUSE_BASE will pause the SD job.
+            # Do not call pause_resume.send_pause_command() before PAUSE:
+            # custom PAUSE macros check print_stats.state == "printing".
             script_parts = []
             if self.pause_on_trigger:
                 script_parts.append("PAUSE")
@@ -211,6 +222,7 @@ class SurfaceControl:
             self._sync_probe_state()
 
     def get_status(self, eventtime):
+        # Must not pause / query MCU — called under assert_no_pause.
         return {
             'enabled': bool(self.enabled),
             'probe_triggered': bool(self.last_state),
@@ -252,6 +264,7 @@ class SurfaceControl:
         status = self.get_status(eventtime)
         try:
             triggered = self._is_probe_triggered()
+            self.last_state = triggered
         except Exception:
             triggered = status['probe_triggered']
         gcmd.respond_info(
